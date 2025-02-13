@@ -1,3 +1,4 @@
+import 'package:chess_app/components/dead_piece.dart';
 import 'package:chess_app/components/piece.dart';
 import 'package:chess_app/components/square.dart';
 import 'package:chess_app/helper/helper_methods.dart';
@@ -20,6 +21,16 @@ class _GameBoardState extends State<GameBoard> {
   int selectedCol = -1;
 
   List<List<int>> validMoves = [];
+
+  List<ChessPiece> whitePiecesTaken = [];
+
+  List<ChessPiece> blackPiecesTaken = [];
+
+  bool isWhiteTurn = true;
+
+  List<int> whiteKingPosition = [7, 4];
+  List<int> blacKingPosition = [0, 4];
+  bool checkStatus = false;
 
   @override
   void initState() {
@@ -134,21 +145,35 @@ class _GameBoardState extends State<GameBoard> {
 
   void pieceSelected(int row, int col) {
     setState(() {
-      if (board[row][col] != null) {
+      if (selectedPiece == null && board[row][col] != null) {
+        if (board[row][col]!.isWhite == isWhiteTurn) {
+          selectedPiece = board[row][col];
+          selectedRow = row;
+          selectedCol = col;
+        }
+      } else if (board[row][col] != null &&
+          board[row][col]!.isWhite == selectedPiece!.isWhite) {
         selectedPiece = board[row][col];
         selectedRow = row;
         selectedCol = col;
+      } else if (selectedPiece != null &&
+          validMoves.any((element) => element[0] == row && element[1] == col)) {
+        movePiece(row, col);
       }
 
-      validMoves =
-          calculateRawValidMoves(selectedRow, selectedCol, selectedPiece);
+      validMoves = calculateRealValidMoves(
+          selectedRow, selectedCol, selectedPiece, true);
     });
   }
 
   List<List<int>> calculateRawValidMoves(int row, int col, ChessPiece? piece) {
     List<List<int>> candidateMoves = [];
 
-    int direction = piece!.isWhite ? -1 : 1;
+    if (piece == null) {
+      return [];
+    }
+
+    int direction = piece.isWhite ? -1 : 1;
 
     switch (piece.type) {
       case ChessPieceType.pawn:
@@ -167,60 +192,387 @@ class _GameBoardState extends State<GameBoard> {
 
         if (isInBoard(row + direction, col - 1) &&
             board[row + direction][col - 1] != null &&
-            board[row + direction][col - 1]!.isWhite) {
+            board[row + direction][col - 1]!.isWhite != piece.isWhite) {
           candidateMoves.add([row + direction, col - 1]);
         }
         if (isInBoard(row + direction, col - 1) &&
             board[row + direction][col + 1] != null &&
-            board[row + direction][col + 1]!.isWhite) {
+            board[row + direction][col + 1]!.isWhite != piece.isWhite) {
           candidateMoves.add([row + direction, col + 1]);
         }
         break;
       case ChessPieceType.rook:
+        // Direcciones horizontales y verticales
+        var directions = [
+          [-1, 0], // Arriba
+          [1, 0], // Abajo
+          [0, -1], // Izquierda
+          [0, 1], // Derecha
+        ];
+
+        for (var direction in directions) {
+          var i = 1;
+          while (true) {
+            var newRow = row + i * direction[0];
+            var newCol = col + i * direction[1];
+            if (!isInBoard(newRow, newCol)) {
+              break;
+            }
+            if (board[newRow][newCol] != null) {
+              if (board[newRow][newCol]!.isWhite != piece.isWhite) {
+                candidateMoves.add([newRow, newCol]); // Muere
+              }
+              break; // Bloqueado
+            }
+            candidateMoves.add([newRow, newCol]);
+            i++;
+          }
+        }
         break;
       case ChessPieceType.knight:
+        // Todas las formas de L posibles en el que se puede mover el caballo
+        var knightMoves = [
+          [-2, -1], // Arriba 2 izquierda 1
+          [-2, 1], // Arriba 2 derecha 1
+          [-1, -2], // Arriba 1 izquierda 2
+          [-1, 2], // Arriba 1 derecha 2
+          [1, -2], // Abajo 1 izquierda 2
+          [1, 2], // Abajo 1 derecha 2
+          [2, -1], // Abajo 2 izquierda 1
+          [2, 1] // abajo 2 derecha 1
+        ];
+
+        for (var move in knightMoves) {
+          var newRow = row + move[0];
+          var newCol = col + move[1];
+          if (!isInBoard(newRow, newCol)) {
+            continue;
+          }
+          if (board[newRow][newCol] != null) {
+            if (board[newRow][newCol]!.isWhite != piece.isWhite) {
+              candidateMoves.add([newRow, newCol]); //Captura
+            }
+            continue; //Bloqueado
+          }
+          candidateMoves.add([newRow, newCol]);
+        }
         break;
       case ChessPieceType.bishop:
+        // Direcciones en diagonal
+        var directions = [
+          [-1, -1], // Arriba izquierda
+          [-1, 1], // Arriba derecha
+          [1, -1], // Abajo izquierda
+          [1, 1] // Abajo derecha
+        ];
+
+        for (var direction in directions) {
+          var i = 1;
+          while (true) {
+            var newRow = row + i * direction[0];
+            var newCol = col + i * direction[1];
+            if (!isInBoard(newRow, newCol)) {
+              break;
+            }
+            if (board[newRow][newCol] != null) {
+              if (board[newRow][newCol]!.isWhite != piece.isWhite) {
+                candidateMoves.add([newRow, newCol]);
+              }
+              break; // Bloqueado
+            }
+            candidateMoves.add([newRow, newCol]);
+            i++;
+          }
+        }
         break;
       case ChessPieceType.queen:
+        // Todas las direcciones posibles: arriba, abajo, izquierda, derecha y las 4 diagonales
+        var directions = [
+          [-1, 0], //Arriba
+          [1, 0], //Abajo
+          [0, -1], //Izquierda
+          [0, 1], //Derecha
+          [-1, -1], //Arriba izquierda
+          [-1, 1], //Arriba derecha
+          [1, -1], // Abajo izquierda
+          [1, 1] //Abajo derecha
+        ];
+
+        for (var direction in directions) {
+          var i = 1;
+          while (true) {
+            var newRow = row + i * direction[0];
+            var newCol = col + i * direction[1];
+            if (!isInBoard(newRow, newCol)) {
+              break;
+            }
+            if (board[newRow][newCol] != null) {
+              if (board[newRow][newCol]!.isWhite != piece.isWhite) {
+                candidateMoves.add([newRow, newCol]); // Captura
+              }
+              break; // Bloqueado
+            }
+            candidateMoves.add([newRow, newCol]);
+            i++;
+          }
+        }
         break;
       case ChessPieceType.king:
+        // todas las direcciones posibles
+        var directions = [
+          [-1, 0], //Arriba
+          [1, 0], //Abajo
+          [0, -1], //Izquierda
+          [0, 1], //Derecha
+          [-1, -1], //Arriba izquierda
+          [-1, 1], //Arriba derecha
+          [1, -1], // Abajo izquierda
+          [1, 1] //Abajo derecha
+        ];
+
+        for (var direction in directions) {
+          var newRow = row + direction[0];
+          var newCol = col + direction[1];
+          if (!isInBoard(newRow, newCol)) {
+            continue;
+          }
+          if (board[newRow][newCol] != null) {
+            if (board[newRow][newCol]!.isWhite != piece.isWhite) {
+              candidateMoves.add([newRow, newCol]);
+            }
+            continue;
+          }
+          candidateMoves.add([newRow, newCol]);
+        }
         break;
       default:
     }
     return candidateMoves;
   }
 
+  List<List<int>> calculateRealValidMoves(
+      int row, int col, ChessPiece? piece, bool checkSimulation) {
+    List<List<int>> realValidMoves = [];
+    List<List<int>> candidateMoves = calculateRawValidMoves(row, col, piece);
+
+    if (checkSimulation) {
+      for (var move in candidateMoves) {
+        int endRow = move[0];
+        int endCol = move[1];
+        if (simulationMoveIsSafe(piece!, row, col, endRow, endCol)) {
+          realValidMoves.add(move);
+        }
+      }
+    } else {
+      realValidMoves = candidateMoves;
+    }
+    return realValidMoves;
+  }
+
+  // movimiento de las piezas
+  void movePiece(int newRow, int newCol) {
+    if (board[newRow][newCol] != null) {
+      var capturedPiece = board[newRow][newCol];
+      if (capturedPiece!.isWhite) {
+        whitePiecesTaken.add(capturedPiece);
+      } else {
+        blackPiecesTaken.add(capturedPiece);
+      }
+    }
+
+    if (selectedPiece!.type == ChessPieceType.king) {
+      if (selectedPiece!.isWhite) {
+        whiteKingPosition = [newRow, newCol];
+      } else {
+        blacKingPosition = [newRow, newCol];
+      }
+    }
+
+    board[newRow][newCol] = selectedPiece;
+    board[selectedRow][selectedCol] = null;
+
+    if (isKingInCheck(!isWhiteTurn)) {
+      checkStatus = true;
+    } else {
+      checkStatus = false;
+    }
+
+    setState(() {
+      selectedPiece = null;
+      selectedRow = -1;
+      selectedCol = -1;
+      validMoves = [];
+    });
+
+    if (isCheckMate(isWhiteTurn)) {
+      showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+                title: const Text("CHECK MATE!"),
+                actions: [
+                  TextButton(
+                    onPressed: resetGame,
+                    child: const Text("Play Again"),
+                  )
+                ],
+              ));
+    }
+
+    // Cambio de turnos
+    isWhiteTurn = !isWhiteTurn;
+  }
+
+  bool isKingInCheck(bool isWhiteKing) {
+    // Obtener la posición del rey
+    List<int> kingPosition = isWhiteKing ? whiteKingPosition : blacKingPosition;
+
+    for (int i = 0; i < 8; i++) {
+      for (int j = 0; j < 8; j++) {
+        if (board[i][j] == null || board[i][j]!.isWhite == isWhiteKing) {
+          continue;
+        }
+        List<List<int>> pieceValidMoves =
+            calculateRealValidMoves(i, j, board[i][j], false);
+
+        if (pieceValidMoves.any((move) =>
+            move[0] == kingPosition[0] && move[1] == kingPosition[1])) {
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+
+  bool simulationMoveIsSafe(
+      ChessPiece piece, int startRow, int startCol, int endRow, int endCol) {
+    ChessPiece? originalDestinationPiece = board[endRow][endCol];
+
+    List<int>? originalKingPosition;
+    if (piece.type == ChessPieceType.king) {
+      originalKingPosition =
+          piece.isWhite ? whiteKingPosition : blacKingPosition;
+
+      if (piece.isWhite) {
+        whiteKingPosition = [endRow, endCol];
+      } else {
+        blacKingPosition = [endRow, endCol];
+      }
+    }
+
+    board[endRow][endCol] = piece;
+    board[startRow][endCol] = null;
+
+    bool KingInCheck = isKingInCheck(piece.isWhite);
+
+    board[startRow][startCol] = piece;
+    board[endRow][endCol] = originalDestinationPiece;
+
+    if (piece.type == ChessPieceType.king) {
+      if (piece.isWhite) {
+        whiteKingPosition = originalKingPosition!;
+      } else {
+        blacKingPosition = originalKingPosition!;
+      }
+    }
+
+    return !KingInCheck;
+  }
+
+  // Verifica el mate
+  bool isCheckMate(bool isWhiteKing) {
+    if (!isKingInCheck(isWhiteKing)) {
+      return false;
+    }
+
+    for (int i = 0; i < 8; i++) {
+      for (int j = 0; j < 8; j++) {
+        if (board[i][j] == null || board[i][j]!.isWhite != isWhiteKing) {
+          continue;
+        }
+        List<List<int>> pieceValidMoves =
+            calculateRealValidMoves(i, j, board[i][j], true);
+
+        if (pieceValidMoves.isNotEmpty) {
+          return false;
+        }
+      }
+    }
+    return true;
+  }
+
+  // Reiniciar el juego
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: backgroundColor,
-      body: GridView.builder(
-        itemCount: 8 * 8,
-        physics: const NeverScrollableScrollPhysics(),
-        gridDelegate:
-            const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 8),
-        itemBuilder: (context, index) {
-          int row = index ~/ 8;
-          int col = index % 8;
+      body: Column(
+        children: [
+          // PIEZAS BLANCAS CAPTURDAS
+          Expanded(
+            child: GridView.builder(
+              itemCount: whitePiecesTaken.length,
+              physics: const NeverScrollableScrollPhysics(),
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 8),
+              itemBuilder: (context, index) => DeadPiece(
+                imagePath: whitePiecesTaken[index].imagePath,
+                isWhite: true,
+              ),
+            ),
+          ),
 
-          bool isSelected = selectedRow == row && selectedCol == col;
+          // STATUS DEL JUEGO
+          Text(
+            checkStatus ? "CHECK!" : "",
+          ),
 
-          bool isValidMove = false;
-          for (var position in validMoves) {
-            if (position[0] == row && position[1] == col) {
-              isValidMove = true;
-            }
-          }
+          // TABLERO DE AJEDREZ
+          Expanded(
+            flex: 3,
+            child: GridView.builder(
+              itemCount: 8 * 8,
+              physics: const NeverScrollableScrollPhysics(),
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 8),
+              itemBuilder: (context, index) {
+                int row = index ~/ 8;
+                int col = index % 8;
 
-          return Square(
-            isWhite: isWhite(index),
-            piece: board[row][col],
-            isSelected: isSelected,
-            isValidMove: isValidMove,
-            onTap: () => pieceSelected(row, col),
-          );
-        },
+                bool isSelected = selectedRow == row && selectedCol == col;
+
+                bool isValidMove = false;
+                for (var position in validMoves) {
+                  if (position[0] == row && position[1] == col) {
+                    isValidMove = true;
+                  }
+                }
+
+                return Square(
+                  isWhite: isWhite(index),
+                  piece: board[row][col],
+                  isSelected: isSelected,
+                  isValidMove: isValidMove,
+                  onTap: () => pieceSelected(row, col),
+                );
+              },
+            ),
+          ),
+
+          // PIEZAS NEGRAS CAPTURDAS
+          Expanded(
+            child: GridView.builder(
+              itemCount: blackPiecesTaken.length,
+              physics: const NeverScrollableScrollPhysics(),
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 8),
+              itemBuilder: (context, index) => DeadPiece(
+                imagePath: blackPiecesTaken[index].imagePath,
+                isWhite: false,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
