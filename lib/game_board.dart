@@ -124,7 +124,7 @@ class _GameBoardState extends State<GameBoard> {
         isWhite: false,
         imagePath: 'lib/images/queen.png');
 
-    newBoard[7][4] = ChessPiece(
+    newBoard[7][3] = ChessPiece(
         type: ChessPieceType.queen,
         isWhite: true,
         imagePath: 'lib/images/queen.png');
@@ -135,7 +135,7 @@ class _GameBoardState extends State<GameBoard> {
         isWhite: false,
         imagePath: 'lib/images/king.png');
 
-    newBoard[7][3] = ChessPiece(
+    newBoard[7][4] = ChessPiece(
         type: ChessPieceType.king,
         isWhite: true,
         imagePath: 'lib/images/king.png');
@@ -403,6 +403,20 @@ class _GameBoardState extends State<GameBoard> {
     board[newRow][newCol] = selectedPiece;
     board[selectedRow][selectedCol] = null;
 
+    // Si un peón llega a la última fila, lo convertimos en reina
+    if (selectedPiece!.type == ChessPieceType.pawn) {
+      if ((selectedPiece!.isWhite && newRow == 0) ||
+          (!selectedPiece!.isWhite && newRow == 7)) {
+        board[newRow][newCol] = ChessPiece(
+          type: ChessPieceType.queen,
+          isWhite: selectedPiece!.isWhite,
+          imagePath: selectedPiece!.isWhite
+              ? 'lib/images/queen.png'
+              : 'lib/images/queen.png', // Puedes cambiar la imagen si lo deseas
+        );
+      }
+    }
+
     if (isKingInCheck(!isWhiteTurn)) {
       checkStatus = true;
     } else {
@@ -537,10 +551,14 @@ class _GameBoardState extends State<GameBoard> {
         children: [
           // PIEZAS BLANCAS CAPTURDAS
           Expanded(
+            // Ocupa todo el espacio disponible
             child: GridView.builder(
+              // Contruye una cuadrícula
               itemCount: whitePiecesTaken.length,
               physics: const NeverScrollableScrollPhysics(),
+              // Organiza los elementos del grid en un número fijo de filas
               gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  //Especifica cuántas columnas tendrá la cuadrícula
                   crossAxisCount: 8),
               itemBuilder: (context, index) => DeadPiece(
                 imagePath: whitePiecesTaken[index].imagePath,
@@ -558,6 +576,7 @@ class _GameBoardState extends State<GameBoard> {
           Expanded(
             flex: 3,
             child: GridView.builder(
+              // Tablero de 8 x 8
               itemCount: 8 * 8,
               physics: const NeverScrollableScrollPhysics(),
               gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
