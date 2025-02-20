@@ -144,31 +144,37 @@ class _GameBoardState extends State<GameBoard> {
   }
 
   void pieceSelected(int row, int col) {
-    setState(() {
-      if (selectedPiece == null && board[row][col] != null) {
-        if (board[row][col]!.isWhite == isWhiteTurn) {
+    setState(
+      () {
+        if (selectedPiece == null && board[row][col] != null) {
+          if (board[row][col]!.isWhite == isWhiteTurn) {
+            selectedPiece = board[row][col];
+            selectedRow = row;
+            selectedCol = col;
+          }
+        } else if (board[row][col] != null &&
+            board[row][col]!.isWhite == selectedPiece!.isWhite) {
           selectedPiece = board[row][col];
           selectedRow = row;
           selectedCol = col;
+        } else if (selectedPiece != null &&
+            validMoves
+                .any((element) => element[0] == row && element[1] == col)) {
+          movePiece(row, col);
         }
-      } else if (board[row][col] != null &&
-          board[row][col]!.isWhite == selectedPiece!.isWhite) {
-        selectedPiece = board[row][col];
-        selectedRow = row;
-        selectedCol = col;
-      } else if (selectedPiece != null &&
-          validMoves.any((element) => element[0] == row && element[1] == col)) {
-        movePiece(row, col);
-      }
 
-      validMoves = calculateRealValidMoves(
-          selectedRow, selectedCol, selectedPiece, true);
-    });
+        validMoves = calculateRealValidMoves(
+          selectedRow,
+          selectedCol,
+          selectedPiece,
+          true,
+        );
+      },
+    );
   }
 
   List<List<int>> calculateRawValidMoves(int row, int col, ChessPiece? piece) {
     List<List<int>> candidateMoves = [];
-
     if (piece == null) {
       return [];
     }
@@ -195,12 +201,14 @@ class _GameBoardState extends State<GameBoard> {
             board[row + direction][col - 1]!.isWhite != piece.isWhite) {
           candidateMoves.add([row + direction, col - 1]);
         }
-        if (isInBoard(row + direction, col - 1) &&
+
+        if (isInBoard(row + direction, col + 1) &&
             board[row + direction][col + 1] != null &&
             board[row + direction][col + 1]!.isWhite != piece.isWhite) {
           candidateMoves.add([row + direction, col + 1]);
         }
         break;
+
       case ChessPieceType.rook:
         // Direcciones horizontales y verticales
         var directions = [
@@ -211,7 +219,7 @@ class _GameBoardState extends State<GameBoard> {
         ];
 
         for (var direction in directions) {
-          var i = 1;
+          int i = 1;
           while (true) {
             var newRow = row + i * direction[0];
             var newCol = col + i * direction[1];
@@ -220,15 +228,16 @@ class _GameBoardState extends State<GameBoard> {
             }
             if (board[newRow][newCol] != null) {
               if (board[newRow][newCol]!.isWhite != piece.isWhite) {
-                candidateMoves.add([newRow, newCol]); // Muere
+                candidateMoves.add([newRow, newCol]); // kill
               }
-              break; // Bloqueado
+              break; // blocked
             }
             candidateMoves.add([newRow, newCol]);
             i++;
           }
         }
         break;
+
       case ChessPieceType.knight:
         // Todas las formas de L posibles en el que se puede mover el caballo
         var knightMoves = [
@@ -250,24 +259,25 @@ class _GameBoardState extends State<GameBoard> {
           }
           if (board[newRow][newCol] != null) {
             if (board[newRow][newCol]!.isWhite != piece.isWhite) {
-              candidateMoves.add([newRow, newCol]); //Captura
+              candidateMoves.add([newRow, newCol]); // Captura
             }
-            continue; //Bloqueado
+            continue; // Bloquead
           }
           candidateMoves.add([newRow, newCol]);
         }
         break;
+
       case ChessPieceType.bishop:
         // Direcciones en diagonal
         var directions = [
           [-1, -1], // Arriba izquierda
           [-1, 1], // Arriba derecha
-          [1, -1], // Abajo izquierda
-          [1, 1] // Abajo derecha
+          [1, 1], // Abajo izquierda
+          [1, -1] // Abajo derecha
         ];
 
         for (var direction in directions) {
-          var i = 1;
+          int i = 1;
           while (true) {
             var newRow = row + i * direction[0];
             var newCol = col + i * direction[1];
@@ -276,7 +286,7 @@ class _GameBoardState extends State<GameBoard> {
             }
             if (board[newRow][newCol] != null) {
               if (board[newRow][newCol]!.isWhite != piece.isWhite) {
-                candidateMoves.add([newRow, newCol]);
+                candidateMoves.add([newRow, newCol]); // Capturado
               }
               break; // Bloqueado
             }
@@ -285,6 +295,7 @@ class _GameBoardState extends State<GameBoard> {
           }
         }
         break;
+
       case ChessPieceType.queen:
         // Todas las direcciones posibles: arriba, abajo, izquierda, derecha y las 4 diagonales
         var directions = [
@@ -294,12 +305,12 @@ class _GameBoardState extends State<GameBoard> {
           [0, 1], //Derecha
           [-1, -1], //Arriba izquierda
           [-1, 1], //Arriba derecha
-          [1, -1], // Abajo izquierda
-          [1, 1] //Abajo derecha
+          [1, 1], // Abajo izquierda
+          [1, -1] //Abajo derecha
         ];
 
         for (var direction in directions) {
-          var i = 1;
+          int i = 1;
           while (true) {
             var newRow = row + i * direction[0];
             var newCol = col + i * direction[1];
@@ -308,9 +319,9 @@ class _GameBoardState extends State<GameBoard> {
             }
             if (board[newRow][newCol] != null) {
               if (board[newRow][newCol]!.isWhite != piece.isWhite) {
-                candidateMoves.add([newRow, newCol]); // Captura
+                candidateMoves.add([newRow, newCol]); // kill
               }
-              break; // Bloqueado
+              break; // blocked
             }
             candidateMoves.add([newRow, newCol]);
             i++;
@@ -326,8 +337,8 @@ class _GameBoardState extends State<GameBoard> {
           [0, 1], //Derecha
           [-1, -1], //Arriba izquierda
           [-1, 1], //Arriba derecha
-          [1, -1], // Abajo izquierda
-          [1, 1] //Abajo derecha
+          [1, 1], // Abajo izquierda
+          [1, -1] //Abajo derecha
         ];
 
         for (var direction in directions) {
@@ -338,9 +349,9 @@ class _GameBoardState extends State<GameBoard> {
           }
           if (board[newRow][newCol] != null) {
             if (board[newRow][newCol]!.isWhite != piece.isWhite) {
-              candidateMoves.add([newRow, newCol]);
+              candidateMoves.add([newRow, newCol]); // kill
             }
-            continue;
+            continue; // blocked
           }
           candidateMoves.add([newRow, newCol]);
         }
@@ -359,6 +370,7 @@ class _GameBoardState extends State<GameBoard> {
       for (var move in candidateMoves) {
         int endRow = move[0];
         int endCol = move[1];
+
         if (simulationMoveIsSafe(piece!, row, col, endRow, endCol)) {
           realValidMoves.add(move);
         }
@@ -404,18 +416,21 @@ class _GameBoardState extends State<GameBoard> {
       validMoves = [];
     });
 
-    if (isCheckMate(isWhiteTurn)) {
+    if (isCheckMate(!isWhiteTurn)) {
       showDialog(
-          context: context,
-          builder: (context) => AlertDialog(
-                title: const Text("CHECK MATE!"),
-                actions: [
-                  TextButton(
-                    onPressed: resetGame,
-                    child: const Text("Play Again"),
-                  )
-                ],
-              ));
+        context: context,
+        builder: (context) {
+          return AlertDialog(
+            title: const Text("CHECK MATE!"),
+            actions: [
+              TextButton(
+                onPressed: resetGame,
+                child: const Text("Play again"),
+              )
+            ],
+          );
+        },
+      );
     }
 
     // Cambio de turnos
@@ -431,6 +446,7 @@ class _GameBoardState extends State<GameBoard> {
         if (board[i][j] == null || board[i][j]!.isWhite == isWhiteKing) {
           continue;
         }
+
         List<List<int>> pieceValidMoves =
             calculateRealValidMoves(i, j, board[i][j], false);
 
@@ -451,7 +467,6 @@ class _GameBoardState extends State<GameBoard> {
     if (piece.type == ChessPieceType.king) {
       originalKingPosition =
           piece.isWhite ? whiteKingPosition : blacKingPosition;
-
       if (piece.isWhite) {
         whiteKingPosition = [endRow, endCol];
       } else {
@@ -460,9 +475,9 @@ class _GameBoardState extends State<GameBoard> {
     }
 
     board[endRow][endCol] = piece;
-    board[startRow][endCol] = null;
+    board[startRow][startCol] = null;
 
-    bool KingInCheck = isKingInCheck(piece.isWhite);
+    bool kingInCheck = isKingInCheck(piece.isWhite);
 
     board[startRow][startCol] = piece;
     board[endRow][endCol] = originalDestinationPiece;
@@ -475,7 +490,7 @@ class _GameBoardState extends State<GameBoard> {
       }
     }
 
-    return !KingInCheck;
+    return !kingInCheck;
   }
 
   // Verifica el mate
@@ -489,6 +504,7 @@ class _GameBoardState extends State<GameBoard> {
         if (board[i][j] == null || board[i][j]!.isWhite != isWhiteKing) {
           continue;
         }
+
         List<List<int>> pieceValidMoves =
             calculateRealValidMoves(i, j, board[i][j], true);
 
@@ -501,6 +517,17 @@ class _GameBoardState extends State<GameBoard> {
   }
 
   // Reiniciar el juego
+  void resetGame() {
+    Navigator.pop(context);
+    _initializeBoard();
+    checkStatus = false;
+    whitePiecesTaken.clear();
+    blackPiecesTaken.clear();
+    whiteKingPosition = [7, 4];
+    blacKingPosition = [0, 4];
+    isWhiteTurn = true;
+    setState(() {});
+  }
 
   @override
   Widget build(BuildContext context) {
