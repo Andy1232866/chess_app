@@ -24,7 +24,7 @@ En esta segunda imagen, podemos apreciar lo que pasa cuando uno de los reyes se 
 
 En esta tercera imagen, observamos que al caer uno de los dos reyes, que en esta caso es el rey negro, termina el juego y nos da la opción de jugar una nueva partida
 
-<video src="demostración.mp4" width="320" height="240" controls>
+<video src="demostración.mp4" width="400" controls>
   Tu navegador no soporta el elemento de video.
 </video>
 
