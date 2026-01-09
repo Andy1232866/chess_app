@@ -24,8 +24,6 @@ En esta segunda imagen, podemos apreciar lo que pasa cuando uno de los reyes se 
 
 En esta tercera imagen, observamos que al caer uno de los dos reyes, que en esta caso es el rey negro, termina el juego y nos da la opción de jugar una nueva partida
 
-<video src="demostración.mp4" width="400" controls>
-  Tu navegador no soporta el elemento de video.
-</video>
+[![Ver el video de demostración]](https://www.youtube.com/shorts/CbrxFeg9q6E)
 
 A diferencia del ajedréz común, en este mini-game, cuando un peón llega al otro lado del tablero, automáticamente se convierte en una reina, dando libertad a moverse por el tablero como si fuera una
